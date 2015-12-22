@@ -20,7 +20,6 @@ import base64
 import httplib
 import httplib2
 import os
-import pickle
 import socket
 import sys
 import time
@@ -144,36 +143,6 @@ class _MyHTTPConnection(object):
     def getresponse(self):
         return _MyResponse("the body", status="200")
 
-class _MyHTTPBadStatusConnection(object):
-    "Mock of httplib.HTTPConnection that raises BadStatusLine."
-
-    num_calls = 0
-
-    def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=None, proxy_info=None):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.log = ""
-        self.sock = None
-        _MyHTTPBadStatusConnection.num_calls = 0
-
-    def set_debuglevel(self, level):
-        pass
-
-    def connect(self):
-        pass
-
-    def close(self):
-        pass
-
-    def request(self, method, request_uri, body, headers):
-        pass
-
-    def getresponse(self):
-        _MyHTTPBadStatusConnection.num_calls += 1
-        raise httplib.BadStatusLine("")
-
 
 class HttpTest(unittest.TestCase):
     def setUp(self):
@@ -216,17 +185,6 @@ class HttpTest(unittest.TestCase):
         response, content = self.http.request("http://bitworking.org", connection_type=_MyHTTPConnection)
         self.assertEqual(response['content-location'], "http://bitworking.org")
         self.assertEqual(content, "the body")
-
-    def testBadStatusLineRetry(self):
-        old_retries = httplib2.RETRIES
-        httplib2.RETRIES = 1
-        self.http.force_exception_to_status_code = False
-        try:
-            response, content = self.http.request("http://bitworking.org",
-                connection_type=_MyHTTPBadStatusConnection)
-        except httplib.BadStatusLine:
-            self.assertEqual(2, _MyHTTPBadStatusConnection.num_calls)
-        httplib2.RETRIES = old_retries
 
     def testGetUnknownServer(self):
         self.http.force_exception_to_status_code = False
@@ -531,14 +489,12 @@ class HttpTest(unittest.TestCase):
                     http.request, "https://www.google.com/", "GET")
 
     def testSslCertValidationDoubleDots(self):
-        pass
-        # No longer a valid test.
-        #if sys.version_info >= (2, 6):
-        # Test that we get match a double dot cert
-        #try:
-        #  self.http.request("https://www.appspot.com/", "GET")
-        #except httplib2.CertificateHostnameMismatch:
-        #  self.fail('cert with *.*.appspot.com should not raise an exception.')
+        if sys.version_info >= (2, 6):
+            # Test that we get match a double dot cert
+            try:
+              self.http.request("https://1.www.appspot.com/", "GET")
+            except httplib2.CertificateHostnameMismatch:
+              self.fail('cert with *.*.appspot.com should not raise an exception.')
 
     def testSslHostnameValidation(self):
       pass
@@ -627,7 +583,7 @@ class HttpTest(unittest.TestCase):
     def testGet304(self):
         # Test that we use ETags properly to validate our cache
         uri = urlparse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
         (response, content) = self.http.request(uri, "GET")
@@ -653,15 +609,15 @@ class HttpTest(unittest.TestCase):
     def testGetIgnoreEtag(self):
         # Test that we can forcibly ignore ETags
         uri = urlparse.urljoin(base, "reflector/reflector.cgi")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
         self.assertTrue(d.has_key('HTTP_IF_NONE_MATCH'))
 
         self.http.ignore_etag = True
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
         self.assertEqual(response.fromcache, False)
         self.assertFalse(d.has_key('HTTP_IF_NONE_MATCH'))
@@ -669,15 +625,15 @@ class HttpTest(unittest.TestCase):
     def testOverrideEtag(self):
         # Test that we can forcibly ignore ETags
         uri = urlparse.urljoin(base, "reflector/reflector.cgi")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
         self.assertTrue(d.has_key('HTTP_IF_NONE_MATCH'))
         self.assertNotEqual(d['HTTP_IF_NONE_MATCH'], "fred")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0', 'if-none-match': 'fred'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0', 'if-none-match': 'fred'})
         d = self.reflector(content)
         self.assertTrue(d.has_key('HTTP_IF_NONE_MATCH'))
         self.assertEqual(d['HTTP_IF_NONE_MATCH'], "fred")
@@ -766,22 +722,21 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.fromcache, False, msg="Should not be from cache")
 
     def testNoVary(self):
-        pass
         # when there is no vary, a different Accept header (e.g.) should not
         # impact if the cache is used
         # test that the vary header is not sent
-        # uri = urlparse.urljoin(base, "vary/no-vary.asis")
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
-        # self.assertEqual(response.status, 200)
-        # self.assertFalse(response.has_key('vary'))
+        uri = urlparse.urljoin(base, "vary/no-vary.asis")
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
+        self.assertEqual(response.status, 200)
+        self.assertFalse(response.has_key('vary'))
 
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
-        # self.assertEqual(response.status, 200)
-        # self.assertEqual(response.fromcache, True, msg="Should be from cache")
-        #
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/html'})
-        # self.assertEqual(response.status, 200)
-        # self.assertEqual(response.fromcache, True, msg="Should be from cache")
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.fromcache, True, msg="Should be from cache")
+
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/html'})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.fromcache, True, msg="Should be from cache")
 
     def testVaryHeaderDouble(self):
         uri = urlparse.urljoin(base, "vary/accept-double.asis")
@@ -931,26 +886,26 @@ class HttpTest(unittest.TestCase):
     def testGetCacheControlNoCache(self):
         # Test Cache-Control: no-cache on requests
         uri = urlparse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
-        (response, content) = self.http.request(uri, "GET", headers={'accept-encoding': 'identity', 'Cache-Control': 'no-cache'})
+        (response, content) = self.http.request(uri, "GET", headers={'Cache-Control': 'no-cache'})
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, False)
 
     def testGetCacheControlPragmaNoCache(self):
         # Test Pragma: no-cache on requests
         uri = urlparse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
-        (response, content) = self.http.request(uri, "GET", headers= {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
-        (response, content) = self.http.request(uri, "GET", headers={'accept-encoding': 'identity', 'Pragma': 'no-cache'})
+        (response, content) = self.http.request(uri, "GET", headers={'Pragma': 'no-cache'})
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, False)
 
@@ -1227,40 +1182,6 @@ class HttpTest(unittest.TestCase):
         for c in self.http.connections.values():
             self.assertEqual(None, c.sock)
 
-    def testPickleHttp(self):
-        pickled_http = pickle.dumps(self.http)
-        new_http = pickle.loads(pickled_http)
-
-        self.assertEqual(sorted(new_http.__dict__.keys()),
-                         sorted(self.http.__dict__.keys()))
-        for key in new_http.__dict__:
-            if key in ('certificates', 'credentials'):
-                self.assertEqual(new_http.__dict__[key].credentials,
-                                 self.http.__dict__[key].credentials)
-            elif key == 'cache':
-                self.assertEqual(new_http.__dict__[key].cache,
-                                 self.http.__dict__[key].cache)
-            else:
-                self.assertEqual(new_http.__dict__[key],
-                                 self.http.__dict__[key])
-
-    def testPickleHttpWithConnection(self):
-        self.http.request('http://bitworking.org',
-                          connection_type=_MyHTTPConnection)
-        pickled_http = pickle.dumps(self.http)
-        new_http = pickle.loads(pickled_http)
-
-        self.assertEqual(self.http.connections.keys(), ['http:bitworking.org'])
-        self.assertEqual(new_http.connections, {})
-
-    def testPickleCustomRequestHttp(self):
-        def dummy_request(*args, **kwargs):
-            return new_request(*args, **kwargs)
-        dummy_request.dummy_attr = 'dummy_value'
-
-        self.http.request = dummy_request
-        pickled_http = pickle.dumps(self.http)
-        self.assertFalse("S'request'" in pickled_http)
 
 try:
     import memcache
@@ -1663,13 +1584,13 @@ class TestProxyInfo(unittest.TestCase):
         os.environ.update(self.orig_env)
 
     def test_from_url(self):
-        pi = httplib2.proxy_info_from_url('http://myproxy.example.com')
+        pi = httplib2.ProxyInfo.from_url('http://myproxy.example.com')
         self.assertEquals(pi.proxy_host, 'myproxy.example.com')
         self.assertEquals(pi.proxy_port, 80)
         self.assertEquals(pi.proxy_user, None)
 
     def test_from_url_ident(self):
-        pi = httplib2.proxy_info_from_url('http://zoidberg:fish@someproxy:99')
+        pi = httplib2.ProxyInfo.from_url('http://zoidberg:fish@someproxy:99')
         self.assertEquals(pi.proxy_host, 'someproxy')
         self.assertEquals(pi.proxy_port, 99)
         self.assertEquals(pi.proxy_user, 'zoidberg')
@@ -1677,7 +1598,7 @@ class TestProxyInfo(unittest.TestCase):
 
     def test_from_env(self):
         os.environ['http_proxy'] = 'http://myproxy.example.com:8080'
-        pi = httplib2.proxy_info_from_environment()
+        pi = httplib2.ProxyInfo.from_environment()
         self.assertEquals(pi.proxy_host, 'myproxy.example.com')
         self.assertEquals(pi.proxy_port, 8080)
         self.assertEquals(pi.bypass_hosts, [])
@@ -1686,7 +1607,7 @@ class TestProxyInfo(unittest.TestCase):
         os.environ['http_proxy'] = 'http://myproxy.example.com:80'
         os.environ['https_proxy'] = 'http://myproxy.example.com:81'
         os.environ['no_proxy'] = 'localhost,otherhost.domain.local'
-        pi = httplib2.proxy_info_from_environment('https')
+        pi = httplib2.ProxyInfo.from_environment('https')
         self.assertEquals(pi.proxy_host, 'myproxy.example.com')
         self.assertEquals(pi.proxy_port, 81)
         self.assertEquals(pi.bypass_hosts, ['localhost',
@@ -1694,14 +1615,14 @@ class TestProxyInfo(unittest.TestCase):
 
     def test_from_env_none(self):
         os.environ.clear()
-        pi = httplib2.proxy_info_from_environment()
+        pi = httplib2.ProxyInfo.from_environment()
         self.assertEquals(pi, None)
 
     def test_applies_to(self):
         os.environ['http_proxy'] = 'http://myproxy.example.com:80'
         os.environ['https_proxy'] = 'http://myproxy.example.com:81'
         os.environ['no_proxy'] = 'localhost,otherhost.domain.local,example.com'
-        pi = httplib2.proxy_info_from_environment()
+        pi = httplib2.ProxyInfo.from_environment()
         self.assertFalse(pi.applies_to('localhost'))
         self.assertTrue(pi.applies_to('www.google.com'))
         self.assertFalse(pi.applies_to('www.example.com'))
@@ -1709,7 +1630,7 @@ class TestProxyInfo(unittest.TestCase):
     def test_no_proxy_star(self):
         os.environ['http_proxy'] = 'http://myproxy.example.com:80'
         os.environ['NO_PROXY'] = '*'
-        pi = httplib2.proxy_info_from_environment()
+        pi = httplib2.ProxyInfo.from_environment()
         for host in ('localhost', '169.254.38.192', 'www.google.com'):
             self.assertFalse(pi.applies_to(host))
 

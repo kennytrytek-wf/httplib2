@@ -19,7 +19,6 @@ import http.client
 import httplib2
 import io
 import os
-import pickle
 import socket
 import ssl
 import sys
@@ -138,40 +137,9 @@ class _MyHTTPConnection(object):
         return _MyResponse(b"the body", status="200")
 
 
-class _MyHTTPBadStatusConnection(object):
-    "Mock of httplib.HTTPConnection that raises BadStatusLine."
-
-    num_calls = 0
-
-    def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 strict=None, timeout=None, proxy_info=None):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.log = ""
-        self.sock = None
-        _MyHTTPBadStatusConnection.num_calls = 0
-
-    def set_debuglevel(self, level):
-        pass
-
-    def connect(self):
-        pass
-
-    def close(self):
-        pass
-
-    def request(self, method, request_uri, body, headers):
-        pass
-
-    def getresponse(self):
-        _MyHTTPBadStatusConnection.num_calls += 1
-        raise http.client.BadStatusLine("")
-
-
 class HttpTest(unittest.TestCase):
     def setUp(self):
-        if os.path.exists(cacheDirName):
+        if os.path.exists(cacheDirName): 
             [os.remove(os.path.join(cacheDirName, file)) for file in os.listdir(cacheDirName)]
         self.http = httplib2.Http(cacheDirName)
         self.http.clear_credentials()
@@ -195,26 +163,13 @@ class HttpTest(unittest.TestCase):
           pass
 
     def testConnectionType(self):
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
         response, content = self.http.request("http://bitworking.org", connection_type=_MyHTTPConnection)
         self.assertEqual(response['content-location'], "http://bitworking.org")
         self.assertEqual(content, b"the body")
 
-
-    def testBadStatusLineRetry(self):
-        old_retries = httplib2.RETRIES
-        httplib2.RETRIES = 1
-        self.http.force_exception_to_status_code = False
-        try:
-            response, content = self.http.request("http://bitworking.org",
-                connection_type=_MyHTTPBadStatusConnection)
-        except http.client.BadStatusLine:
-            self.assertEqual(2, _MyHTTPBadStatusConnection.num_calls)
-        httplib2.RETRIES = old_retries
-
-
     def testGetUnknownServer(self):
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
         try:
             self.http.request("http://fred.bitworking.org/")
             self.fail("An httplib2.ServerNotFoundError Exception must be thrown on an unresolvable server.")
@@ -250,9 +205,9 @@ class HttpTest(unittest.TestCase):
             uri = urllib.parse.urljoin(base, "reflector/reflector.cgi?d=\N{CYRILLIC CAPITAL LETTER DJE}")
             (response, content) = self.http.request(uri, "GET")
             d = self.reflector(content)
-            self.assertTrue('QUERY_STRING' in d)
-            self.assertTrue(d['QUERY_STRING'].find('%D0%82') > 0)
-
+            self.assertTrue('QUERY_STRING' in d) 
+            self.assertTrue(d['QUERY_STRING'].find('%D0%82') > 0) 
+    
     def testGetIsDefaultMethod(self):
         # Test that GET is the default method
         uri = urllib.parse.urljoin(base, "methods/method_reflector.cgi")
@@ -430,7 +385,7 @@ class HttpTest(unittest.TestCase):
         # Test that we can set a lower redirection limit
         # and that we raise an exception when we exceed
         # that limit.
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
 
         uri = urllib.parse.urljoin(base, "302/twostep.asis")
         try:
@@ -454,7 +409,7 @@ class HttpTest(unittest.TestCase):
     def testGet302NoLocation(self):
         # Test that we throw an exception when we get
         # a 302 with no Location: header.
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
         uri = urllib.parse.urljoin(base, "302/no-location.asis")
         try:
             (response, content) = self.http.request(uri, "GET")
@@ -465,14 +420,14 @@ class HttpTest(unittest.TestCase):
             self.fail("Threw wrong kind of exception ")
 
         # Re-run the test with out the exceptions
-        self.http.force_exception_to_status_code = True
+        self.http.force_exception_to_status_code = True 
 
         (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 500)
         self.assertTrue(response.reason.startswith("Redirected but"))
         self.assertEqual("302", response['status'])
         self.assertTrue(content.startswith(b"This is content"))
-
+ 
     def testGet301ViaHttps(self):
         # Google always redirects to http://google.com
         (response, content) = self.http.request("https://code.google.com/apis/", "GET")
@@ -487,7 +442,7 @@ class HttpTest(unittest.TestCase):
     def testGetViaHttpsSpecViolationOnLocation(self):
         # Test that we follow redirects through HTTPS
         # even if they violate the spec by including
-        # a relative Location: header instead of an
+        # a relative Location: header instead of an 
         # absolute one.
         (response, content) = self.http.request("https://google.com/adsense", "GET")
         self.assertEqual(200, response.status)
@@ -496,8 +451,8 @@ class HttpTest(unittest.TestCase):
 
     def testGetViaHttpsKeyCert(self):
         #  At this point I can only test
-        #  that the key and cert files are passed in
-        #  correctly to httplib. It would be nice to have
+        #  that the key and cert files are passed in 
+        #  correctly to httplib. It would be nice to have 
         #  a real https endpoint to test against.
         http = httplib2.Http(timeout=2)
 
@@ -529,7 +484,7 @@ class HttpTest(unittest.TestCase):
 
           # Test that we get a SSLHandshakeError if we try to access
           # https://www.google.com, using a CA cert file that doesn't contain
-          # the CA Google uses (i.e., simulating a cert that's not signed by a
+          # the CA Gogole uses (i.e., simulating a cert that's not signed by a
           # trusted CA).
           other_ca_certs = os.path.join(
                   os.path.dirname(os.path.abspath(httplib2.__file__ )),
@@ -561,18 +516,18 @@ class HttpTest(unittest.TestCase):
     def test303ForDifferentMethods(self):
         # Test that all methods can be used
         uri = urllib.parse.urljoin(base, "303/redirect-to-reflector.cgi")
-        for (method, method_on_303) in [("PUT", "GET"), ("DELETE", "GET"), ("POST", "GET"), ("GET", "GET"), ("HEAD", "GET")]:
+        for (method, method_on_303) in [("PUT", "GET"), ("DELETE", "GET"), ("POST", "GET"), ("GET", "GET"), ("HEAD", "GET")]: 
             (response, content) = self.http.request(uri, method, body=b" ")
             self.assertEqual(response['x-method'], method_on_303)
 
     def testGet304(self):
         # Test that we use ETags properly to validate our cache
         uri = urllib.parse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'must-revalidate'})
+        (response, content) = self.http.request(uri, "GET")
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'must-revalidate'})
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
@@ -583,45 +538,45 @@ class HttpTest(unittest.TestCase):
 
         self.assertTrue(status_line.startswith("status:"))
 
-        (response, content) = self.http.request(uri, "HEAD", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "HEAD")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'range': 'bytes=0-0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'range': 'bytes=0-0'})
         self.assertEqual(response.status, 206)
         self.assertEqual(response.fromcache, False)
 
     def testGetIgnoreEtag(self):
-        # Test that we can forcibly ignore ETags
+        # Test that we can forcibly ignore ETags 
         uri = urllib.parse.urljoin(base, "reflector/reflector.cgi")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
-        self.assertTrue('HTTP_IF_NONE_MATCH' in d)
+        self.assertTrue('HTTP_IF_NONE_MATCH' in d) 
 
         self.http.ignore_etag = True
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
         self.assertEqual(response.fromcache, False)
-        self.assertFalse('HTTP_IF_NONE_MATCH' in d)
+        self.assertFalse('HTTP_IF_NONE_MATCH' in d) 
 
     def testOverrideEtag(self):
-        # Test that we can forcibly ignore ETags
+        # Test that we can forcibly ignore ETags 
         uri = urllib.parse.urljoin(base, "reflector/reflector.cgi")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0'})
         d = self.reflector(content)
-        self.assertTrue('HTTP_IF_NONE_MATCH' in d)
-        self.assertNotEqual(d['HTTP_IF_NONE_MATCH'], "fred")
+        self.assertTrue('HTTP_IF_NONE_MATCH' in d) 
+        self.assertNotEqual(d['HTTP_IF_NONE_MATCH'], "fred") 
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'cache-control': 'max-age=0', 'if-none-match': 'fred'})
+        (response, content) = self.http.request(uri, "GET", headers = {'cache-control': 'max-age=0', 'if-none-match': 'fred'})
         d = self.reflector(content)
-        self.assertTrue('HTTP_IF_NONE_MATCH' in d)
-        self.assertEqual(d['HTTP_IF_NONE_MATCH'], "fred")
+        self.assertTrue('HTTP_IF_NONE_MATCH' in d) 
+        self.assertEqual(d['HTTP_IF_NONE_MATCH'], "fred") 
 
 #MAP-commented this out because it consistently fails
 #    def testGet304EndToEnd(self):
@@ -640,7 +595,7 @@ class HttpTest(unittest.TestCase):
 #        self.assertEqual(response.fromcache, True)
 
     def testGet304LastModified(self):
-        # Test that we can still handle a 304
+        # Test that we can still handle a 304 
         # by only using the last-modified cache validator.
         uri = urllib.parse.urljoin(base, "304/last-modified-only/last-modified-only.txt")
         (response, content) = self.http.request(uri, "GET")
@@ -707,22 +662,21 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.fromcache, False, msg="Should not be from cache")
 
     def testNoVary(self):
-        pass
         # when there is no vary, a different Accept header (e.g.) should not
         # impact if the cache is used
         # test that the vary header is not sent
-        # uri = urllib.parse.urljoin(base, "vary/no-vary.asis")
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
-        # self.assertEqual(response.status, 200)
-        # self.assertFalse('vary' in response)
-        #
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
-        # self.assertEqual(response.status, 200)
-        # self.assertEqual(response.fromcache, True, msg="Should be from cache")
-        #
-        # (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/html'})
-        # self.assertEqual(response.status, 200)
-        # self.assertEqual(response.fromcache, True, msg="Should be from cache")
+        uri = urllib.parse.urljoin(base, "vary/no-vary.asis")
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
+        self.assertEqual(response.status, 200)
+        self.assertFalse('vary' in response)
+
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/plain'})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.fromcache, True, msg="Should be from cache")
+        
+        (response, content) = self.http.request(uri, "GET", headers={'Accept': 'text/html'})
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.fromcache, True, msg="Should be from cache")
 
     def testVaryHeaderDouble(self):
         uri = urllib.parse.urljoin(base, "vary/accept-double.asis")
@@ -759,7 +713,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.fromcache, True, msg="Should be from cache")
 
     def testHeadGZip(self):
-        # Test that we don't try to decompress a HEAD response
+        # Test that we don't try to decompress a HEAD response 
         uri = urllib.parse.urljoin(base, "gzip/final-destination.txt")
         (response, content) = self.http.request(uri, "HEAD")
         self.assertEqual(response.status, 200)
@@ -785,7 +739,7 @@ class HttpTest(unittest.TestCase):
 
     def testGetGZipFailure(self):
         # Test that we raise a good exception when the gzip fails
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
         uri = urllib.parse.urljoin(base, "gzip/failed-compression.asis")
         try:
             (response, content) = self.http.request(uri, "GET")
@@ -796,7 +750,7 @@ class HttpTest(unittest.TestCase):
             self.fail("Threw wrong kind of exception")
 
         # Re-run the test with out the exceptions
-        self.http.force_exception_to_status_code = True
+        self.http.force_exception_to_status_code = True 
 
         (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 500)
@@ -805,7 +759,7 @@ class HttpTest(unittest.TestCase):
     def testIndividualTimeout(self):
         uri = urllib.parse.urljoin(base, "timeout/timeout.cgi")
         http = httplib2.Http(timeout=1)
-        http.force_exception_to_status_code = True
+        http.force_exception_to_status_code = True 
 
         (response, content) = http.request(uri)
         self.assertEqual(response.status, 408)
@@ -824,7 +778,7 @@ class HttpTest(unittest.TestCase):
 
     def testGetDeflateFailure(self):
         # Test that we raise a good exception when the deflate fails
-        self.http.force_exception_to_status_code = False
+        self.http.force_exception_to_status_code = False 
 
         uri = urllib.parse.urljoin(base, "deflate/failed-compression.asis")
         try:
@@ -836,7 +790,7 @@ class HttpTest(unittest.TestCase):
             self.fail("Threw wrong kind of exception")
 
         # Re-run the test with out the exceptions
-        self.http.force_exception_to_status_code = True
+        self.http.force_exception_to_status_code = True 
 
         (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 500)
@@ -853,26 +807,26 @@ class HttpTest(unittest.TestCase):
     def testGetCacheControlNoCache(self):
         # Test Cache-Control: no-cache on requests
         uri = urllib.parse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'Cache-Control': 'no-cache'})
+        (response, content) = self.http.request(uri, "GET", headers={'Cache-Control': 'no-cache'})
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, False)
 
     def testGetCacheControlPragmaNoCache(self):
         # Test Pragma: no-cache on requests
         uri = urllib.parse.urljoin(base, "304/test_etag.txt")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertNotEqual(response['etag'], "")
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity'})
+        (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, True)
 
-        (response, content) = self.http.request(uri, "GET", headers = {'accept-encoding': 'identity', 'Pragma': 'no-cache'})
+        (response, content) = self.http.request(uri, "GET", headers={'Pragma': 'no-cache'})
         self.assertEqual(response.status, 200)
         self.assertEqual(response.fromcache, False)
 
@@ -914,7 +868,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.fromcache, False)
 
     def testUpdateInvalidatesCache(self):
-        # Test that calling PUT or DELETE on a
+        # Test that calling PUT or DELETE on a 
         # URI that is cache invalidates that cache.
         uri = urllib.parse.urljoin(base, "304/test_etag.txt")
 
@@ -928,7 +882,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.fromcache, False)
 
     def testUpdateUsesCachedETag(self):
-        # Test that we natively support http://www.w3.org/1999/04/Editing/
+        # Test that we natively support http://www.w3.org/1999/04/Editing/ 
         uri = urllib.parse.urljoin(base, "conditional-updates/test.cgi")
 
         (response, content) = self.http.request(uri, "GET")
@@ -944,7 +898,7 @@ class HttpTest(unittest.TestCase):
 
 
     def testUpdatePatchUsesCachedETag(self):
-        # Test that we natively support http://www.w3.org/1999/04/Editing/
+        # Test that we natively support http://www.w3.org/1999/04/Editing/ 
         uri = urllib.parse.urljoin(base, "conditional-updates/test.cgi")
 
         (response, content) = self.http.request(uri, "GET")
@@ -959,7 +913,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(response.status, 412)
 
     def testUpdateUsesCachedETagAndOCMethod(self):
-        # Test that we natively support http://www.w3.org/1999/04/Editing/
+        # Test that we natively support http://www.w3.org/1999/04/Editing/ 
         uri = urllib.parse.urljoin(base, "conditional-updates/test.cgi")
 
         (response, content) = self.http.request(uri, "GET")
@@ -974,7 +928,7 @@ class HttpTest(unittest.TestCase):
 
 
     def testUpdateUsesCachedETagOverridden(self):
-        # Test that we natively support http://www.w3.org/1999/04/Editing/
+        # Test that we natively support http://www.w3.org/1999/04/Editing/ 
         uri = urllib.parse.urljoin(base, "conditional-updates/test.cgi")
 
         (response, content) = self.http.request(uri, "GET")
@@ -1022,7 +976,7 @@ class HttpTest(unittest.TestCase):
         (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 401)
 
-        domain = urllib.parse.urlparse(base)[1]
+        domain = urllib.parse.urlparse(base)[1] 
         self.http.add_credentials('joe', 'password', domain)
         (response, content) = self.http.request(uri, "GET")
         self.assertEqual(response.status, 200)
@@ -1138,7 +1092,7 @@ class HttpTest(unittest.TestCase):
         uri = urllib.parse.urljoin(base, "reflector/reflector.cgi")
         (response, content) = self.http.request(uri, "GET")
         d = self.reflector(content)
-        self.assertTrue('HTTP_USER_AGENT' in d)
+        self.assertTrue('HTTP_USER_AGENT' in d) 
 
 
     def testConnectionClose(self):
@@ -1149,42 +1103,6 @@ class HttpTest(unittest.TestCase):
         (response, content) = self.http.request(uri, "GET", headers={"connection": "close"})
         for c in self.http.connections.values():
             self.assertEqual(None, c.sock)
-
-    def testPickleHttp(self):
-        pickled_http = pickle.dumps(self.http)
-        new_http = pickle.loads(pickled_http)
-
-        self.assertEqual(sorted(new_http.__dict__.keys()),
-                         sorted(self.http.__dict__.keys()))
-        for key in new_http.__dict__:
-            if key in ('certificates', 'credentials'):
-                self.assertEqual(new_http.__dict__[key].credentials,
-                                 self.http.__dict__[key].credentials)
-            elif key == 'cache':
-                self.assertEqual(new_http.__dict__[key].cache,
-                                 self.http.__dict__[key].cache)
-            else:
-                self.assertEqual(new_http.__dict__[key],
-                                 self.http.__dict__[key])
-
-    def testPickleHttpWithConnection(self):
-        self.http.request('http://bitworking.org',
-                          connection_type=_MyHTTPConnection)
-        pickled_http = pickle.dumps(self.http)
-        new_http = pickle.loads(pickled_http)
-
-        self.assertEqual(list(self.http.connections.keys()),
-                         ['http:bitworking.org'])
-        self.assertEqual(new_http.connections, {})
-
-    def testPickleCustomRequestHttp(self):
-        def dummy_request(*args, **kwargs):
-            return new_request(*args, **kwargs)
-        dummy_request.dummy_attr = 'dummy_value'
-
-        self.http.request = dummy_request
-        pickled_http = pickle.dumps(self.http)
-        self.assertFalse(b"S'request'" in pickled_http)
 
 try:
     import memcache
@@ -1230,17 +1148,11 @@ class HttpPrivateTest(unittest.TestCase):
 
 
     def testNormalizeHeaders(self):
-        # Test that we normalize headers to lowercase
+        # Test that we normalize headers to lowercase 
         h = httplib2._normalize_headers({'Cache-Control': 'no-cache', 'Other': 'Stuff'})
         self.assertTrue('cache-control' in h)
         self.assertTrue('other' in h)
         self.assertEqual('Stuff', h['other'])
-    
-    def testConvertByteStr(self):
-        with self.assertRaises(TypeError):
-            httplib2._convert_byte_str(4)
-        self.assertEqual('Hello World', httplib2._convert_byte_str(b'Hello World'))
-        self.assertEqual('Bye World', httplib2._convert_byte_str('Bye World'))
 
     def testExpirationModelTransparent(self):
         # Test that no-cache makes our request TRANSPARENT
@@ -1377,19 +1289,19 @@ class HttpPrivateTest(unittest.TestCase):
 
     def testParseWWWAuthenticateEmpty(self):
         res = httplib2._parse_www_authenticate({})
-        self.assertEqual(len(list(res.keys())), 0)
+        self.assertEqual(len(list(res.keys())), 0) 
 
     def testParseWWWAuthenticate(self):
         # different uses of spaces around commas
         res = httplib2._parse_www_authenticate({ 'www-authenticate': 'Test realm="test realm" , foo=foo ,bar="bar", baz=baz,qux=qux'})
         self.assertEqual(len(list(res.keys())), 1)
         self.assertEqual(len(list(res['test'].keys())), 5)
-
+        
         # tokens with non-alphanum
         res = httplib2._parse_www_authenticate({ 'www-authenticate': 'T*!%#st realm=to*!%#en, to*!%#en="quoted string"'})
         self.assertEqual(len(list(res.keys())), 1)
         self.assertEqual(len(list(res['t*!%#st'].keys())), 2)
-
+        
         # quoted string with quoted pairs
         res = httplib2._parse_www_authenticate({ 'www-authenticate': 'Test realm="a \\"test\\" realm"'})
         self.assertEqual(len(list(res.keys())), 1)
@@ -1428,7 +1340,7 @@ class HttpPrivateTest(unittest.TestCase):
 
 
     def testParseWWWAuthenticateDigest(self):
-        res = httplib2._parse_www_authenticate({ 'www-authenticate':
+        res = httplib2._parse_www_authenticate({ 'www-authenticate': 
                 'Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41"'})
         digest = res['digest']
         self.assertEqual('testrealm@host.com', digest['realm'])
@@ -1436,7 +1348,7 @@ class HttpPrivateTest(unittest.TestCase):
 
 
     def testParseWWWAuthenticateMultiple(self):
-        res = httplib2._parse_www_authenticate({ 'www-authenticate':
+        res = httplib2._parse_www_authenticate({ 'www-authenticate': 
                 'Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41" Basic REAlm="me" '})
         digest = res['digest']
         self.assertEqual('testrealm@host.com', digest['realm'])
@@ -1449,7 +1361,7 @@ class HttpPrivateTest(unittest.TestCase):
     def testParseWWWAuthenticateMultiple2(self):
         # Handle an added comma between challenges, which might get thrown in if the challenges were
         # originally sent in separate www-authenticate headers.
-        res = httplib2._parse_www_authenticate({ 'www-authenticate':
+        res = httplib2._parse_www_authenticate({ 'www-authenticate': 
                 'Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", Basic REAlm="me" '})
         digest = res['digest']
         self.assertEqual('testrealm@host.com', digest['realm'])
@@ -1462,7 +1374,7 @@ class HttpPrivateTest(unittest.TestCase):
     def testParseWWWAuthenticateMultiple3(self):
         # Handle an added comma between challenges, which might get thrown in if the challenges were
         # originally sent in separate www-authenticate headers.
-        res = httplib2._parse_www_authenticate({ 'www-authenticate':
+        res = httplib2._parse_www_authenticate({ 'www-authenticate': 
                 'Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41", Basic REAlm="me", WSSE realm="foo", profile="UsernameToken"'})
         digest = res['digest']
         self.assertEqual('testrealm@host.com', digest['realm'])
@@ -1476,8 +1388,8 @@ class HttpPrivateTest(unittest.TestCase):
         self.assertEqual('UsernameToken', wsse['profile'])
 
     def testParseWWWAuthenticateMultiple4(self):
-        res = httplib2._parse_www_authenticate({ 'www-authenticate':
-                'Digest realm="test-real.m@host.com", qop \t=\t"\tauth,auth-int", nonce="(*)&^&$%#",opaque="5ccc069c403ebaf9f0171e9517f40e41", Basic REAlm="me", WSSE realm="foo", profile="UsernameToken"'})
+        res = httplib2._parse_www_authenticate({ 'www-authenticate': 
+                'Digest realm="test-real.m@host.com", qop \t=\t"\tauth,auth-int", nonce="(*)&^&$%#",opaque="5ccc069c403ebaf9f0171e9517f40e41", Basic REAlm="me", WSSE realm="foo", profile="UsernameToken"'}) 
         digest = res['digest']
         self.assertEqual('test-real.m@host.com', digest['realm'])
         self.assertEqual('\tauth,auth-int', digest['qop'])
@@ -1498,7 +1410,7 @@ class HttpPrivateTest(unittest.TestCase):
     def testDigestObject(self):
         credentials = ('joe', 'password')
         host = None
-        request_uri = '/projects/httplib2/test/digest/'
+        request_uri = '/projects/httplib2/test/digest/' 
         headers = {}
         response = {
             'www-authenticate': 'Digest realm="myrealm", nonce="Ygk86AsKBAA=3516200d37f9a3230352fde99977bd6d472d4306", algorithm=MD5, qop="auth"'
@@ -1506,7 +1418,7 @@ class HttpPrivateTest(unittest.TestCase):
         content = b""
 
         d = httplib2.DigestAuthentication(credentials, host, request_uri, headers, response, content, None)
-        d.request("GET", request_uri, headers, content, cnonce="33033375ec278a46")
+        d.request("GET", request_uri, headers, content, cnonce="33033375ec278a46") 
         our_request = "authorization: %s" % headers['authorization']
         working_request = 'authorization: Digest username="joe", realm="myrealm", nonce="Ygk86AsKBAA=3516200d37f9a3230352fde99977bd6d472d4306", uri="/projects/httplib2/test/digest/", algorithm=MD5, response="97ed129401f7cdc60e5db58a80f3ea8b", qop=auth, nc=00000001, cnonce="33033375ec278a46"'
         self.assertEqual(our_request, working_request)
@@ -1530,7 +1442,7 @@ class HttpPrivateTest(unittest.TestCase):
     def testDigestObjectStale(self):
         credentials = ('joe', 'password')
         host = None
-        request_uri = '/projects/httplib2/test/digest/'
+        request_uri = '/projects/httplib2/test/digest/' 
         headers = {}
         response = httplib2.Response({ })
         response['www-authenticate'] = 'Digest realm="myrealm", nonce="Ygk86AsKBAA=3516200d37f9a3230352fde99977bd6d472d4306", algorithm=MD5, qop="auth", stale=true'
@@ -1543,7 +1455,7 @@ class HttpPrivateTest(unittest.TestCase):
     def testDigestObjectAuthInfo(self):
         credentials = ('joe', 'password')
         host = None
-        request_uri = '/projects/httplib2/test/digest/'
+        request_uri = '/projects/httplib2/test/digest/' 
         headers = {}
         response = httplib2.Response({ })
         response['www-authenticate'] = 'Digest realm="myrealm", nonce="Ygk86AsKBAA=3516200d37f9a3230352fde99977bd6d472d4306", algorithm=MD5, qop="auth", stale=true'
@@ -1580,51 +1492,9 @@ class HttpPrivateTest(unittest.TestCase):
         end2end = httplib2._get_end2end_headers(response)
         self.assertEqual(0, len(end2end))
 
-        # Degenerate case of connection referrring to a header not passed in
+        # Degenerate case of connection referrring to a header not passed in 
         response = {'connection': 'content-type'}
         end2end = httplib2._get_end2end_headers(response)
         self.assertEqual(0, len(end2end))
 
-
-class TestProxyInfo(unittest.TestCase):
-    def setUp(self):
-        self.orig_env = dict(os.environ)
-
-    def tearDown(self):
-        os.environ.clear()
-        os.environ.update(self.orig_env)
-
-    def test_from_url(self):
-        pi = httplib2.proxy_info_from_url('http://myproxy.example.com')
-        self.assertEqual(pi.proxy_host, 'myproxy.example.com')
-        self.assertEqual(pi.proxy_port, 80)
-        self.assertEqual(pi.proxy_user, None)
-
-    def test_from_url_ident(self):
-        pi = httplib2.proxy_info_from_url('http://zoidberg:fish@someproxy:99')
-        self.assertEqual(pi.proxy_host, 'someproxy')
-        self.assertEqual(pi.proxy_port, 99)
-        self.assertEqual(pi.proxy_user, 'zoidberg')
-        self.assertEqual(pi.proxy_pass, 'fish')
-
-    def test_from_env(self):
-        os.environ['http_proxy'] = 'http://myproxy.example.com:8080'
-        pi = httplib2.proxy_info_from_environment()
-        self.assertEqual(pi.proxy_host, 'myproxy.example.com')
-        self.assertEqual(pi.proxy_port, 8080)
-
-    def test_from_env_no_proxy(self):
-        os.environ['http_proxy'] = 'http://myproxy.example.com:80'
-        os.environ['https_proxy'] = 'http://myproxy.example.com:81'
-        pi = httplib2.proxy_info_from_environment('https')
-        self.assertEqual(pi.proxy_host, 'myproxy.example.com')
-        self.assertEqual(pi.proxy_port, 81)
-
-    def test_from_env_none(self):
-        os.environ.clear()
-        pi = httplib2.proxy_info_from_environment()
-        self.assertEqual(pi, None)
-
-
-if __name__ == '__main__':
-    unittest.main()
+unittest.main()
